@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Punch Pad</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Barlow+Condensed:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Barlow Condensed',sans-serif;user-select:none;}
+.screen{display:none;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+.screen.active{display:flex;}
+
+/* HOME */
+#homeScreen{background:radial-gradient(ellipse at 50% 20%,#1a0006 0%,#050505 70%);}
+.logo{font-family:'Black Ops One',cursive;font-size:clamp(48px,13vw,88px);line-height:.85;text-align:center;z-index:1;color:#fff;}
+.logo span{color:#e8001c;text-shadow:0 0 40px rgba(232,0,28,.7);}
+.tagline{font-size:12px;letter-spacing:5px;color:#444;margin:12px 0 32px;text-transform:uppercase;z-index:1;}
+.menu{display:flex;flex-direction:column;gap:11px;width:100%;max-width:310px;z-index:1;}
+.mbtn{background:#0f0f0f;border:1px solid #1e1e1e;border-left:4px solid #e8001c;padding:16px 18px;cursor:pointer;display:flex;align-items:center;gap:13px;transition:all .18s;}
+.mbtn:active{background:#181818;border-left-color:#f5c518;transform:translateX(4px);}
+.mbtn-icon{font-size:30px;}
+.mbtn-name{font-family:'Black Ops One',cursive;font-size:19px;color:#fff;}
+.mbtn-desc{font-size:12px;color:#444;margin-top:1px;}
+
+/* CALIB */
+#calibScreen{background:#050505;gap:11px;}
+.ctitle{font-family:'Black Ops One',cursive;font-size:26px;color:#fff;}
+.chint{font-size:12px;color:#444;text-align:center;max-width:300px;}
+#calibVideo{width:100%;max-width:320px;aspect-ratio:4/3;object-fit:cover;background:#000;border:2px solid #1e1e1e;border-radius:3px;transform:scaleX(-1);}
+.slist{list-style:none;width:100%;max-width:320px;}
+.slist li{display:flex;align-items:center;gap:9px;padding:6px 11px;font-size:12px;color:#444;border-bottom:1px solid #111;}
+.sdot{width:8px;height:8px;border-radius:50%;background:#1a1a1a;flex-shrink:0;transition:background .3s;}
+.slist li.done{color:#f0f0f0;}.slist li.done .sdot{background:#00e676;}
+#calibMsg{font-size:13px;color:#f5c518;letter-spacing:1px;min-height:18px;text-align:center;}
+.bbtn{font-family:'Black Ops One',cursive;font-size:18px;letter-spacing:2px;padding:13px 36px;background:#e8001c;color:#fff;border:none;cursor:pointer;}
+.bbtn:disabled{background:#1a1a1a;color:#333;cursor:not-allowed;}
+.bbtn:not(:disabled):active{background:#ff1a34;}
+.gbtn{font-family:'Black Ops One',cursive;font-size:12px;padding:9px 24px;background:transparent;border:2px solid #222;color:#333;cursor:pointer;}
+.gbtn:active{border-color:#666;color:#aaa;}
+
+/* GAME */
+#gameScreen{padding:0;background:#000;}
+#gameVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.55;z-index:0;}
+#poseCanvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);z-index:1;pointer-events:none;}
+#gameCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+
+/* HUD */
+.hud{position:absolute;top:0;left:0;right:0;z-index:10;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;background:linear-gradient(to bottom,rgba(0,0,0,.85),transparent);}
+.hb{display:flex;flex-direction:column;}
+.hl{font-size:9px;letter-spacing:3px;color:#444;text-transform:uppercase;}
+.hv{font-family:'Black Ops One',cursive;font-size:34px;line-height:1;color:#fff;}
+.hv.gold{color:#f5c518;}.hv.red{color:#e8001c;}
+.hc{text-align:center;}
+.htimer{font-family:'Black Ops One',cursive;font-size:42px;line-height:1;color:#fff;}
+.hround{font-size:9px;letter-spacing:3px;color:#444;text-transform:uppercase;}
+
+/* Lives */
+.lives{position:absolute;top:72px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:6px;}
+.heart{font-size:22px;transition:transform .2s;}
+.heart.lost{opacity:.2;transform:scale(.7);}
+
+/* Bottom */
+.php{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:7px 13px 11px;background:linear-gradient(to top,rgba(0,0,0,.85),transparent);}
+.phl{font-size:9px;letter-spacing:3px;color:#444;margin-bottom:3px;}
+.phbar{height:10px;background:#111;border:1px solid #1e1e1e;border-radius:2px;overflow:hidden;}
+.phfill{height:100%;background:linear-gradient(90deg,#00e676,#00c853);transition:width .3s;border-radius:2px;}
+.phfill.danger{background:linear-gradient(90deg,#e53935,#ff1744);}
+
+/* Punch hint */
+#punchHint{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);z-index:10;font-family:'Black Ops One',cursive;font-size:22px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-align:center;white-space:nowrap;pointer-events:none;}
+
+#feedback{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);font-family:'Black Ops One',cursive;font-size:58px;z-index:20;pointer-events:none;opacity:0;text-align:center;white-space:nowrap;text-shadow:3px 3px 0 rgba(0,0,0,.9);}
+#flash{position:fixed;inset:0;z-index:30;pointer-events:none;opacity:0;}
+
+/* RESULTS */
+#resultsScreen{background:radial-gradient(ellipse at 50% 0%,#1a0006,#050505 60%);text-align:center;gap:11px;}
+.rhead{font-family:'Black Ops One',cursive;font-size:clamp(54px,15vw,86px);line-height:1;}
+.rhead.win{color:#f5c518;text-shadow:0 0 50px rgba(245,197,24,.5);}
+.rhead.lose{color:#e8001c;text-shadow:0 0 50px rgba(232,0,28,.5);}
+.rsub{font-size:11px;letter-spacing:4px;color:#444;text-transform:uppercase;}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;width:100%;max-width:290px;margin:9px 0;}
+.rstat{background:#0f0f0f;border:1px solid #1e1e1e;padding:11px 9px;}
+.rsv{font-family:'Black Ops One',cursive;font-size:30px;color:#f5c518;}
+.rsl{font-size:10px;color:#444;letter-spacing:1px;}
+.rbtns{display:flex;gap:11px;flex-wrap:wrap;justify-content:center;margin-top:3px;}
+</style>
+</head>
+<body>
+
+<div class="screen active" id="homeScreen">
+  <div class="logo">PUNCH<br><span>PAD</span></div>
+  <div class="tagline">It's Coming. Hit It.</div>
+  <div class="menu">
+    <div class="mbtn" onclick="selectMode('survive')">
+      <div class="mbtn-icon">🥊</div>
+      <div><div class="mbtn-name">Survive</div><div class="mbtn-desc">3 rounds — 3 lives — don't miss!</div></div>
+    </div>
+    <div class="mbtn" onclick="selectMode('blitz')">
+      <div class="mbtn-icon">⚡</div>
+      <div><div class="mbtn-name">Blitz</div><div class="mbtn-desc">60 sec — max streak — max score!</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="calibScreen">
+  <div class="ctitle">GET READY</div>
+  <div class="chint">Stand 4–5 feet from camera. Full upper body visible.</div>
+  <video id="calibVideo" autoplay playsinline muted></video>
+  <div id="calibMsg">Starting camera…</div>
+  <ul class="slist">
+    <li id="s1"><div class="sdot"></div>Camera access granted</li>
+    <li id="s2"><div class="sdot"></div>Pose model ready</li>
+    <li id="s3"><div class="sdot"></div>Body detected in frame</li>
+  </ul>
+  <button class="bbtn" id="startBtn" disabled onclick="startGame()">FIGHT!</button>
+  <button class="gbtn" onclick="goHome()">Back</button>
+</div>
+
+<div class="screen" id="gameScreen">
+  <video id="gameVideo" autoplay playsinline muted></video>
+  <canvas id="poseCanvas"></canvas>
+  <canvas id="gameCanvas"></canvas>
+  <div class="hud">
+    <div class="hb"><div class="hl">Score</div><div class="hv gold" id="scoreVal">0</div></div>
+    <div class="hb hc"><div class="hround" id="roundVal">ROUND 1</div><div class="htimer" id="timerVal">1:00</div></div>
+    <div class="hb" style="align-items:flex-end"><div class="hl">Streak</div><div class="hv red" id="streakVal">0</div></div>
+  </div>
+  <div class="lives" id="livesBar">
+    <div class="heart" id="h0">❤️</div>
+    <div class="heart" id="h1">❤️</div>
+    <div class="heart" id="h2">❤️</div>
+  </div>
+  <div id="punchHint"></div>
+  <div id="feedback"></div>
+  <div id="flash"></div>
+  <div class="php">
+    <div class="phl">NEXT PAD IN…</div>
+    <div class="phbar"><div class="phfill" id="nextBar" style="width:100%"></div></div>
+  </div>
+</div>
+
+<div class="screen" id="resultsScreen">
+  <div class="rhead" id="resHead">WIN!</div>
+  <div class="rsub" id="resSub">SURVIVE MODE</div>
+  <div class="rgrid">
+    <div class="rstat"><div class="rsv" id="rScore">0</div><div class="rsl">Score</div></div>
+    <div class="rstat"><div class="rsv" id="rHits">0</div><div class="rsl">Hits</div></div>
+    <div class="rstat"><div class="rsv" id="rStreak">0</div><div class="rsl">Max Streak</div></div>
+    <div class="rstat"><div class="rsv" id="rMisses">0</div><div class="rsl">Misses</div></div>
+  </div>
+  <div class="rbtns">
+    <button class="bbtn" onclick="rematch()">REMATCH</button>
+    <button class="gbtn" onclick="goHome()">Home</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
+<script>
+// ═══════════════════════════════════════
+// PAD TYPES — position & required punch
+// ═══════════════════════════════════════
+// x,y = center position (0..1), normalized to screen
+// type = punch needed
+var PAD_TYPES = [
+  // JAB — center slightly left, chest height
+  {id:'JAB',   label:'JAB',   color:'#e8001c', tx:0.40, ty:0.42, hand:'left'},
+  // CROSS — center slightly right, chest height
+  {id:'CROSS', label:'CROSS', color:'#f5c518', tx:0.60, ty:0.42, hand:'right'},
+  // HOOK L — far left, mid height
+  {id:'HOOKL', label:'HOOK',  color:'#00e676', tx:0.18, ty:0.46, hand:'left'},
+  // HOOK R — far right, mid height
+  {id:'HOOKR', label:'HOOK',  color:'#00e676', tx:0.82, ty:0.46, hand:'right'},
+  // UPPERCUT — center bottom, drive fist up
+  {id:'UPPER', label:'UPPER', color:'#aa00ff', tx:0.50, ty:0.68, hand:'both'},
+];
+
+// ═══════════════════════════════════════
+// GLOBALS
+// ═══════════════════════════════════════
+var gameMode='survive', poseModel=null, cam=null;
+var calibModelReady=false, bodyInFrame=false;
+var gameRunning=false, gameOver=false;
+var curLW=null,curRW=null,curLS=null,curRS=null;
+var HIST=4;
+var H_lw=[],H_rw=[],H_ls=[],H_rs=[];
+var score=0,hits=0,misses=0,streak=0,maxStreak=0,lives=3;
+var timeLeft=60,round=1;
+var timerInt=null;
+var gc,gctx,pc,pctx,W,H;
+var punchCooldown=false;
+var lastT=null;
+
+// Current pad flying at player
+var pad=null; // {def, scale, speed, born, lifetime, hit, missed, hitT}
+var padCooldown=false; // brief gap between pads
+var padCooldownTimer=0;
+var PAD_COOLDOWN=600; // ms between pads
+
+// ═══════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════
+function showScreen(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});document.getElementById(id).classList.add('active');}
+function goHome(){stopGame();showScreen('homeScreen');}
+function selectMode(m){gameMode=m;showScreen('calibScreen');initPose();}
+function rematch(){showScreen('calibScreen');initPose();}
+
+// ═══════════════════════════════════════
+// POSE
+// ═══════════════════════════════════════
+function initPose(){
+  var cv=document.getElementById('calibVideo');
+  document.getElementById('calibMsg').textContent='Requesting camera...';
+  if(!poseModel){
+    poseModel=new Pose({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/'+f;}});
+    poseModel.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.5,minTrackingConfidence:.5});
+  }
+  poseModel.onResults(onCalibResults);
+  if(cam)cam.stop();
+  cam=new Camera(cv,{onFrame:async function(){await poseModel.send({image:cv});},width:640,height:480});
+  cam.start()
+    .then(function(){markStep('s1');document.getElementById('calibMsg').textContent='Loading pose model...';})
+    .catch(function(){document.getElementById('calibMsg').textContent='Camera denied. Allow and refresh.';});
+}
+function markStep(id){document.getElementById(id).classList.add('done');}
+function onCalibResults(res){
+  if(!calibModelReady){calibModelReady=true;markStep('s2');document.getElementById('calibMsg').textContent='Step into frame...';}
+  if(res.poseLandmarks&&res.poseLandmarks.length){
+    if(!bodyInFrame){bodyInFrame=true;markStep('s3');document.getElementById('calibMsg').textContent='Ready! Tap FIGHT!';document.getElementById('startBtn').disabled=false;}
+  } else {
+    bodyInFrame=false;document.getElementById('startBtn').disabled=true;
+    document.getElementById('calibMsg').textContent='Move into frame...';
+    document.getElementById('s3').classList.remove('done');
+  }
+}
+
+// ═══════════════════════════════════════
+// START / STOP
+// ═══════════════════════════════════════
+function startGame(){
+  resetState();showScreen('gameScreen');
+  gc=document.getElementById('gameCanvas');gctx=gc.getContext('2d');
+  pc=document.getElementById('poseCanvas');pctx=pc.getContext('2d');
+  resizeCanvases();window.addEventListener('resize',resizeCanvases);
+  var gv=document.getElementById('gameVideo');
+  if(cam)cam.stop();
+  poseModel.onResults(onGameResults);
+  cam=new Camera(gv,{onFrame:async function(){if(gameRunning)await poseModel.send({image:gv});},width:640,height:480});
+  cam.start().then(function(){gameRunning=true;startTimer();requestAnimationFrame(gameLoop);});
+}
+function resizeCanvases(){W=window.innerWidth;H=window.innerHeight;gc.width=W;gc.height=H;pc.width=W;pc.height=H;}
+function resetState(){
+  score=0;hits=0;misses=0;streak=0;maxStreak=0;lives=3;
+  round=1;gameOver=false;timeLeft=60;
+  pad=null;padCooldown=false;padCooldownTimer=0;
+  H_lw=[];H_rw=[];H_ls=[];H_rs=[];
+  curLW=null;curRW=null;curLS=null;curRS=null;
+  punchCooldown=false;lastT=null;
+  if(timerInt)clearInterval(timerInt);
+  updateLives();
+}
+function stopGame(){
+  gameRunning=false;if(cam)cam.stop();if(timerInt)clearInterval(timerInt);
+  window.removeEventListener('resize',resizeCanvases);
+}
+function updateLives(){
+  for(var i=0;i<3;i++){
+    var el=document.getElementById('h'+i);
+    if(el)el.className='heart'+(i>=lives?' lost':'');
+  }
+}
+
+// ═══════════════════════════════════════
+// POSE GAME
+// ═══════════════════════════════════════
+function mx(x){return 1-x;}
+function onGameResults(res){
+  if(!gameRunning||gameOver)return;
+  pctx.clearRect(0,0,W,H);
+  if(!res.poseLandmarks)return;
+  var lm=res.poseLandmarks;
+  // Light skeleton
+  var mir=lm.map(function(p){return{x:mx(p.x),y:p.y,z:p.z||0,visibility:p.visibility};});
+  drawConnectors(pctx,mir,POSE_CONNECTIONS,{color:'rgba(255,255,255,0.12)',lineWidth:2});
+  drawLandmarks(pctx,mir,{color:'rgba(255,255,255,0.2)',radius:3});
+  curLW=lm[15];curRW=lm[16];curLS=lm[11];curRS=lm[12];
+  push(H_lw,{x:curLW.x,y:curLW.y,z:curLW.z||0});
+  push(H_rw,{x:curRW.x,y:curRW.y,z:curRW.z||0});
+  if(curLS)push(H_ls,{x:curLS.x,y:curLS.y});
+  if(curRS)push(H_rs,{x:curRS.x,y:curRS.y});
+}
+function push(arr,v){arr.push(v);if(arr.length>HIST)arr.shift();}
+
+// ═══════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════
+function gameLoop(t){
+  if(!gameRunning)return;
+  var dt=lastT?Math.min(t-lastT,50):16;lastT=t;
+  if(!gameOver){
+    updatePad(dt);
+    checkPunch();
+  }
+  drawGame(t);
+  updateHUD();
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════
+// PAD SYSTEM
+// ═══════════════════════════════════════
+// Pad zooms from small (far) to large (close) — player must punch before it fills screen
+var PAD_MIN_SCALE=0.08;  // starts small (far away)
+var PAD_MAX_SCALE=0.95;  // fills screen = missed
+// Speed increases over time
+function getPadSpeed(){
+  var elapsed=60-timeLeft+(round-1)*60;
+  return 0.28+elapsed*0.004; // 0.28 at start, faster over time (scale units per second)
+}
+
+var lastPadType=null;
+function spawnPad(){
+  // Pick random type, not same as last
+  var pool=PAD_TYPES.slice();
+  if(lastPadType&&pool.length>1)pool=pool.filter(function(p){return p.id!==lastPadType;});
+  var def=pool[Math.floor(Math.random()*pool.length)];
+  lastPadType=def.id;
+  pad={
+    def:def,
+    scale:PAD_MIN_SCALE,
+    speed:getPadSpeed(),
+    born:performance.now(),
+    hit:false,missed:false,hitT:0,
+    hitScale:0
+  };
+  // Show hint
+  document.getElementById('punchHint').textContent=def.label+'!';
+  setTimeout(function(){if(document.getElementById('punchHint'))document.getElementById('punchHint').textContent='';},800);
+}
+
+function updatePad(dt){
+  // If no pad, handle cooldown then spawn
+  if(!pad||pad.hit||pad.missed){
+    if(pad&&(pad.hit||pad.missed)){
+      var age=performance.now()-pad.hitT;
+      if(age>500){pad=null;padCooldownTimer=PAD_COOLDOWN;}
+    } else if(!pad){
+      padCooldownTimer-=dt;
+      if(padCooldownTimer<=0)spawnPad();
+    }
+    return;
+  }
+  // Zoom pad toward player
+  pad.scale+=pad.speed*(dt/1000);
+  if(pad.scale>=PAD_MAX_SCALE){
+    // MISSED — pad reached player
+    pad.missed=true;pad.hitT=performance.now();
+    misses++;streak=0;lives--;
+    updateLives();
+    flashScreen('rgba(232,0,28,0.5)');
+    showFeedback('MISS!','#e8001c');
+    document.getElementById('punchHint').textContent='';
+    if(lives<=0&&gameMode==='survive')endGame(false);
+  }
+}
+
+// ═══════════════════════════════════════
+// PUNCH DETECTION
+// ═══════════════════════════════════════
+function velOf(arr){
+  if(arr.length<2)return{vx:0,vy:0,vz:0};
+  var a=arr[arr.length-2],b=arr[arr.length-1];
+  // multiply by 60 to approximate per-second velocity from per-frame
+  return{vx:(mx(a.x)-mx(b.x))*60,vy:(a.y-b.y)*60,vz:((a.z||0)-(b.z||0))*60};
+}
+function spd(v){return Math.hypot(v.vx,v.vy);}
+
+function detectPunch(){
+  if(H_lw.length<2||H_rw.length<2)return null;
+  var lv=velOf(H_lw),rv=velOf(H_rw);
+  var ls=spd(lv),rs=spd(rv);
+  var T=0.9; // threshold — units per second (low = sensitive)
+  if(ls<T&&rs<T)return null;
+  var useLeft=ls>=rs;
+  var v=useLeft?lv:rv;
+  var s=useLeft?ls:rs;
+  // Uppercut: strong upward
+  if(v.vy>0.8&&s>T)return'UPPER';
+  // Hook: strong horizontal
+  if(Math.abs(v.vx)>0.8&&Math.abs(v.vy)<0.5)return useLeft?'HOOKL':'HOOKR';
+  // Jab / Cross
+  return useLeft?'JAB':'CROSS';
+}
+
+function checkPunch(){
+  if(!pad||pad.hit||pad.missed)return;
+  if(punchCooldown)return;
+  if(H_lw.length<2||H_rw.length<2)return;
+
+  var detected=detectPunch();
+  if(!detected)return;
+
+  // Must match pad type
+  if(detected!==pad.def.id)return;
+
+  // Must be in a reasonable zoom window — not too early (pad too small)
+  if(pad.scale<0.15)return;
+
+  // HIT!
+  punchCooldown=true;
+  setTimeout(function(){punchCooldown=false;},250);
+  pad.hit=true;pad.hitT=performance.now();pad.hitScale=pad.scale;
+  hits++;streak++;if(streak>maxStreak)maxStreak=streak;
+  var pts=100+Math.round(pad.scale*200)+(streak>3?streak*20:0); // more points for hitting late (closer)
+  score+=pts;
+  showFeedback(streak>=5?'ON FIRE! +'+pts:pad.def.label+'! +'+pts, streak>=5?'#f5c518':pad.def.color);
+  flashScreen('rgba(0,230,118,0.2)');
+  document.getElementById('punchHint').textContent='';
+}
+
+// ═══════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════
+function drawGame(t){
+  gctx.clearRect(0,0,W,H);
+  if(!pad)return;
+
+  var now=performance.now();
+  var def=pad.def;
+  // Target position on screen
+  var cx=def.tx*W, cy=def.ty*H;
+
+  // Radius based on scale
+  var maxR=Math.min(W,H)*0.52;
+  var r=maxR*pad.scale;
+
+  var alpha=1;
+  if(pad.hit){
+    var t2=(now-pad.hitT)/400;
+    alpha=Math.max(0,1-t2);
+    r=maxR*pad.hitScale*(1+t2*0.5);
+  } else if(pad.missed){
+    var t2=(now-pad.hitT)/350;
+    alpha=Math.max(0,1-t2);
+  }
+  if(alpha<=0)return;
+
+  gctx.save();
+  gctx.globalAlpha=alpha;
+
+  // ── Draw realistic punch pad ──
+
+  // Shadow / depth
+  gctx.shadowColor='rgba(0,0,0,0.7)';
+  gctx.shadowBlur=r*0.3;
+  gctx.shadowOffsetX=r*0.06;
+  gctx.shadowOffsetY=r*0.08;
+
+  // Main pad body — rounded rectangle shape
+  var pw=r*1.4, ph=r*1.8;
+  var px=cx-pw/2, py=cy-ph/2;
+
+  // Outer pad (dark)
+  roundRect(gctx, px, py, pw, ph, r*0.22);
+  gctx.fillStyle=pad.missed?'#550000':(pad.hit?'#ffffff':'#1a1a1a');
+  gctx.fill();
+
+  // Pad color layer
+  roundRect(gctx, px+pw*0.04, py+ph*0.03, pw*0.92, ph*0.94, r*0.18);
+  var padGrad=gctx.createRadialGradient(cx-pw*0.1,cy-ph*0.15,0,cx,cy,Math.max(pw,ph)*0.7);
+  if(pad.hit){
+    padGrad.addColorStop(0,'#ffffff');
+    padGrad.addColorStop(0.4,def.color);
+    padGrad.addColorStop(1,darken(def.color));
+  } else if(pad.missed){
+    padGrad.addColorStop(0,'#ff2222');
+    padGrad.addColorStop(1,'#660000');
+  } else {
+    padGrad.addColorStop(0,lighten(def.color));
+    padGrad.addColorStop(0.5,def.color);
+    padGrad.addColorStop(1,darken(def.color));
+  }
+  gctx.fillStyle=padGrad;
+  gctx.fill();
+
+  // Center target circle
+  gctx.shadowBlur=0;gctx.shadowOffsetX=0;gctx.shadowOffsetY=0;
+  gctx.beginPath();
+  gctx.arc(cx, cy+ph*0.05, r*0.28, 0, Math.PI*2);
+  gctx.fillStyle='rgba(0,0,0,0.55)';
+  gctx.fill();
+
+  gctx.beginPath();
+  gctx.arc(cx, cy+ph*0.05, r*0.16, 0, Math.PI*2);
+  gctx.fillStyle=pad.hit?'#00e676':'#e8001c';
+  gctx.fill();
+
+  // Label
+  if(!pad.missed){
+    gctx.fillStyle='rgba(255,255,255,0.95)';
+    gctx.font='bold '+Math.max(12,Math.round(r*0.28))+'px Black Ops One';
+    gctx.textAlign='center';
+    gctx.textBaseline='middle';
+    gctx.fillText(def.label, cx, py+ph*0.14);
+  }
+
+  // Hit burst
+  if(pad.hit){
+    var tb=(now-pad.hitT)/400;
+    gctx.globalAlpha=alpha*(1-tb)*0.8;
+    gctx.strokeStyle='#ffffff';
+    gctx.lineWidth=3;
+    for(var i=0;i<10;i++){
+      var a=(i/10)*Math.PI*2;
+      var br=r*(0.9+tb*1.2);
+      gctx.beginPath();
+      gctx.moveTo(cx+Math.cos(a)*r*0.8,cy+Math.sin(a)*r*0.8);
+      gctx.lineTo(cx+Math.cos(a)*br,cy+Math.sin(a)*br);
+      gctx.stroke();
+    }
+  }
+
+  gctx.restore();
+
+  // Wrist dots
+  if(curLW)dw(curLW,'#f5c518',14);
+  if(curRW)dw(curRW,'#e8001c',14);
+
+  // Next bar fill based on pad scale
+  if(!pad.hit&&!pad.missed){
+    var pct=(pad.scale-PAD_MIN_SCALE)/(PAD_MAX_SCALE-PAD_MIN_SCALE)*100;
+    var fill=document.getElementById('nextBar');
+    fill.style.width=(100-pct)+'%';
+    fill.className='phfill'+(pct>70?' danger':'');
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+function lighten(hex){return hex;} // keep simple
+function darken(hex){
+  var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return 'rgb('+Math.round(r*0.5)+','+Math.round(g*0.5)+','+Math.round(b*0.5)+')';
+}
+
+function dw(lm,color,size){
+  var wx=mx(lm.x)*W,wy=lm.y*H;
+  gctx.save();
+  gctx.globalAlpha=0.85;
+  gctx.fillStyle=color;
+  gctx.shadowColor=color;gctx.shadowBlur=14;
+  gctx.beginPath();gctx.arc(wx,wy,size,0,Math.PI*2);gctx.fill();
+  gctx.restore();
+}
+
+// ═══════════════════════════════════════
+// FEEDBACK
+// ═══════════════════════════════════════
+var fbT=null;
+function showFeedback(text,color){
+  var el=document.getElementById('feedback');
+  el.textContent=text;el.style.color=color;
+  el.style.transition='none';el.style.opacity='1';el.style.transform='translate(-50%,-50%) scale(1.1)';
+  if(fbT)clearTimeout(fbT);
+  fbT=setTimeout(function(){el.style.transition='opacity .4s,transform .4s';el.style.opacity='0';el.style.transform='translate(-50%,-62%) scale(.88)';},700);
+}
+function flashScreen(color){
+  var f=document.getElementById('flash');f.style.background=color;f.style.transition='none';f.style.opacity='1';
+  setTimeout(function(){f.style.transition='opacity .3s';f.style.opacity='0';},80);
+}
+
+// ═══════════════════════════════════════
+// TIMER & HUD
+// ═══════════════════════════════════════
+function startTimer(){
+  timerInt=setInterval(function(){
+    if(!gameRunning||gameOver)return;
+    timeLeft--;
+    if(timeLeft<=0){
+      if(gameMode==='blitz'){endGame(true);return;}
+      if(round<3){round++;timeLeft=60;showFeedback('ROUND '+round+'!','#f5c518');}
+      else endGame(true);
+    }
+  },1000);
+}
+function updateHUD(){
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('streakVal').textContent=streak;
+  document.getElementById('roundVal').textContent=gameMode==='survive'?'ROUND '+round+'/3':'BLITZ';
+  var m=Math.floor(timeLeft/60),s=timeLeft%60;
+  document.getElementById('timerVal').textContent=m+':'+(s<10?'0':'')+s;
+}
+
+// ═══════════════════════════════════════
+// END
+// ═══════════════════════════════════════
+function endGame(win){
+  gameOver=true;gameRunning=false;if(timerInt)clearInterval(timerInt);
+  setTimeout(function(){
+    showScreen('resultsScreen');
+    document.getElementById('resHead').textContent=win?'WIN!':'GAME OVER';
+    document.getElementById('resHead').className='rhead '+(win?'win':'lose');
+    document.getElementById('resSub').textContent=gameMode==='survive'?'SURVIVE MODE':'BLITZ MODE';
+    document.getElementById('rScore').textContent=score;
+    document.getElementById('rHits').textContent=hits;
+    document.getElementById('rStreak').textContent=maxStreak;
+    document.getElementById('rMisses').textContent=misses;
+  },800);
+}
+</script>
+</body>
+</html>
